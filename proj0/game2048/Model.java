@@ -1,11 +1,13 @@
 package game2048;
 
+import java.util.ArrayList;
 import java.util.Formatter;
 import java.util.Observable;
+import java.util.Iterator;
 
 
 /** The state of a game of 2048.
- *  @author TODO: YOUR NAME HERE
+ *  @author Zhentao Lu
  */
 public class Model extends Observable {
     /** Current contents of the board. */
@@ -110,15 +112,47 @@ public class Model extends Observable {
         boolean changed;
         changed = false;
 
-        // TODO: Modify this.board (and perhaps this.score) to account
         // for the tilt to the Side SIDE. If the board changed, set the
         // changed local variable to true.
-
         checkGameOver();
+        board.setViewingPerspective(Side.opposite(side));
+        changed = tiltBoard();
+        board.setViewingPerspective(Side.NORTH);
         if (changed) {
             setChanged();
         }
         return changed;
+    }
+
+    private boolean tiltBoard() {
+        int size = board.size();
+        boolean flag = false;
+        for (int i = 0; i < size; i ++) {
+            int lastMove = -1;
+            int lastMerge = -1;
+            for (int j = 0; j < size; j ++) {
+                Tile tile = board.tile(i, j);
+                if (tile == null)
+                    continue;
+                if (lastMove < 0 || board.tile(i, lastMove).value() != tile.value()) {
+                    lastMove ++;
+                    board.move(i, lastMove, tile);
+                    if (lastMove != j)
+                        flag = true;
+                } else {
+                    if (lastMerge < lastMove) {
+                        board.move(i, lastMove, tile);
+                        lastMerge = lastMove;
+                        score += tile.value() * 2;
+                    } else {
+                        lastMove ++;
+                        board.move(i, lastMove, tile);
+                    }
+                    flag = true;
+                }
+            }
+        }
+        return flag;
     }
 
     /** Checks if the game is over and sets the gameOver variable
@@ -137,7 +171,12 @@ public class Model extends Observable {
      *  Empty spaces are stored as null.
      * */
     public static boolean emptySpaceExists(Board b) {
-        // TODO: Fill in this function.
+        Iterator<Tile> it = b.iterator();
+        while (it.hasNext()) {
+            Tile cur = it.next();
+            if (cur == null)
+                return true;
+        }
         return false;
     }
 
@@ -147,7 +186,12 @@ public class Model extends Observable {
      * given a Tile object t, we get its value with t.value().
      */
     public static boolean maxTileExists(Board b) {
-        // TODO: Fill in this function.
+        Iterator<Tile> it = b.iterator();
+        while (it.hasNext()) {
+            Tile cur = it.next();
+            if (cur != null && cur.value() == MAX_PIECE)
+                return true;
+        }
         return false;
     }
 
@@ -158,8 +202,36 @@ public class Model extends Observable {
      * 2. There are two adjacent tiles with the same value.
      */
     public static boolean atLeastOneMoveExists(Board b) {
-        // TODO: Fill in this function.
+        if (emptySpaceExists(b))
+            return true;
+        if (columnMoveExists(b) || RowMoveExists(b))
+            return true;
         return false;
+    }
+
+    public static boolean columnMoveExists(Board b) {
+        int size = b.size();
+        for (int i = 0; i < size; i ++) {
+            int idx = 0;
+            int[] arr = new int[size];
+            for (int j = 0; j < size; j ++) {
+                Tile tile = b.tile(i, j);
+                if (tile == null)
+                    continue;
+                arr[idx] = tile.value();
+                if (idx > 0 && arr[idx] == arr[idx - 1])
+                    return true;
+                idx ++;
+            }
+        }
+        return false;
+    }
+
+    public static boolean RowMoveExists(Board b) {
+        b.setViewingPerspective(Side.WEST);
+        boolean flag = columnMoveExists(b);
+        b.setViewingPerspective(Side.NORTH);
+        return flag;
     }
 
 
